@@ -99,12 +99,12 @@ gcloud run deploy quiz-web \
 WEB_URL="$(gcloud run services describe quiz-web --region "$REGION" --format='value(status.url)')"
 PROJECT_NUMBER="$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')"
 WEB_ALT_URL="https://quiz-web-${PROJECT_NUMBER}.${REGION}.run.app"
-# Alternate ^:^ delimiter so commas inside CORS_ORIGIN are not parsed as extra env vars.
-CORS_ORIGINS="${WEB_URL},${WEB_ALT_URL}"
+# Semicolon-separated (commas break gcloud --update-env-vars; colons break ^:^ escaping).
+CORS_ORIGINS="${WEB_URL};${WEB_ALT_URL}"
 
 gcloud run services update quiz-api \
   --region "$REGION" \
-  --update-env-vars "^:^CORS_ORIGIN=${CORS_ORIGINS}"
+  --update-env-vars "CORS_ORIGIN=${CORS_ORIGINS}"
 
 echo "API:  ${API_URL}"
 echo "Web:  ${WEB_URL}"
