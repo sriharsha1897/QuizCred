@@ -1,16 +1,18 @@
-# One-time CI/CD setup: GCP service account + GitHub Actions secrets.
+# One-time CI/CD setup: Workload Identity Federation + GitHub Actions secrets.
 # Prerequisites: gh auth login, gcloud auth login, billing enabled on the project.
+# Org policy may block service account JSON keys; this script uses WIF instead.
 #
 # Usage:
 #   $env:GCP_PROJECT_ID = "quizcred-513114"
 #   $env:DB_PASSWORD = "YourAlphanumericPassword123"
-#   $env:JWT_SECRET = "<openssl rand -hex 32>"
+#   $env:JWT_SECRET = "<optional; generated if omitted>"
 #   .\scripts\setup-gcp-cicd.ps1
 
 $ErrorActionPreference = "Stop"
 
 $Gh = "C:\Program Files\GitHub CLI\gh.exe"
 $Gcloud = "$env:LOCALAPPDATA\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd"
+$Repo = "sriharsha1897/QuizCred"
 
 if (-not (Test-Path $Gh)) { throw "Install GitHub CLI (winget install GitHub.cli)" }
 if (-not (Test-Path $Gcloud)) { throw "Install Google Cloud SDK (winget install Google.CloudSDK)" }
@@ -26,18 +28,22 @@ if (-not $DbPassword) { $DbPassword = Read-Host "Cloud SQL password (letters and
 $JwtSecret = $env:JWT_SECRET
 if (-not $JwtSecret) {
   $JwtSecret = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 64 | ForEach-Object { [char]$_ })
-  Write-Host "Generated JWT_SECRET (also stored in GitHub secret)."
+  Write-Host "Generated JWT_SECRET."
 }
 
 $Region = if ($env:GCP_REGION) { $env:GCP_REGION } else { "us-central1" }
 $SaName = "github-actions-deploy"
 $SaEmail = "${SaName}@${ProjectId}.iam.gserviceaccount.com"
-$KeyFile = Join-Path $env:TEMP "github-actions-key.json"
+$PoolId = "github-pool"
+$ProviderId = "github-provider"
 
 & $Gcloud config set project $ProjectId
+$ProjectNumber = (& $Gcloud projects describe $ProjectId --format="value(projectNumber)").Trim()
 
-$saList = & $Gcloud iam service-accounts list --filter="email:$SaEmail" --format="value(email)" 2>$null
-if (-not $saList) {
+$saExists = $false
+& $Gcloud iam service-accounts describe $SaEmail 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) { $saExists = $true }
+if (-not $saExists) {
   & $Gcloud iam service-accounts create $SaName --display-name="GitHub Actions deploy"
 }
 
@@ -56,16 +62,43 @@ foreach ($role in $roles) {
     --quiet | Out-Null
 }
 
-if (Test-Path $KeyFile) { Remove-Item $KeyFile -Force }
-& $Gcloud iam service-accounts keys create $KeyFile --iam-account=$SaEmail
+& $Gcloud services enable iamcredentials.googleapis.com sts.googleapis.com --quiet | Out-Null
 
-Write-Host "Setting GitHub secrets on sriharsha1897/QuizCred ..."
-$keyJson = Get-Content $KeyFile -Raw
-& $Gh secret set GCP_PROJECT_ID --body $ProjectId --repo sriharsha1897/QuizCred
-& $Gh secret set GCP_SA_KEY --body $keyJson --repo sriharsha1897/QuizCred
-& $Gh secret set DB_PASSWORD --body $DbPassword --repo sriharsha1897/QuizCred
-& $Gh secret set JWT_SECRET --body $JwtSecret --repo sriharsha1897/QuizCred
-& $Gh secret set GCP_REGION --body $Region --repo sriharsha1897/QuizCred
+$poolExists = $false
+& $Gcloud iam workload-identity-pools describe $PoolId --location=global 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) { $poolExists = $true }
+if (-not $poolExists) {
+  & $Gcloud iam workload-identity-pools create $PoolId --location=global --display-name="GitHub Actions"
+}
 
-Remove-Item $KeyFile -Force
-Write-Host "Done. Run: gh workflow run deploy-gcp.yml --repo sriharsha1897/QuizCred"
+$providerExists = $false
+& $Gcloud iam workload-identity-pools providers describe $ProviderId --location=global --workload-identity-pool=$PoolId 2>$null | Out-Null
+if ($LASTEXITCODE -eq 0) { $providerExists = $true }
+if (-not $providerExists) {
+  & $Gcloud iam workload-identity-pools providers create-oidc $ProviderId `
+    --location=global `
+    --workload-identity-pool=$PoolId `
+    --display-name="GitHub" `
+    --issuer-uri="https://token.actions.githubusercontent.com" `
+    --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" `
+    --attribute-condition="assertion.repository=='$Repo'"
+}
+
+$member = "principalSet://iam.googleapis.com/projects/$ProjectNumber/locations/global/workloadIdentityPools/$PoolId/attribute.repository/$Repo"
+& $Gcloud iam service-accounts add-iam-policy-binding $SaEmail `
+  --project=$ProjectId `
+  --role="roles/iam.workloadIdentityUser" `
+  --member=$member `
+  --quiet | Out-Null
+
+$ProviderResource = "projects/$ProjectNumber/locations/global/workloadIdentityPools/$PoolId/providers/$ProviderId"
+
+Write-Host "Setting GitHub secrets on $Repo ..."
+& $Gh secret set GCP_PROJECT_ID --body $ProjectId -R $Repo
+& $Gh secret set GCP_SERVICE_ACCOUNT --body $SaEmail -R $Repo
+& $Gh secret set GCP_WORKLOAD_IDENTITY_PROVIDER --body $ProviderResource -R $Repo
+& $Gh secret set DB_PASSWORD --body $DbPassword -R $Repo
+& $Gh secret set JWT_SECRET --body $JwtSecret -R $Repo
+& $Gh secret set GCP_REGION --body $Region -R $Repo
+
+Write-Host "Done. Push workflow, then: gh workflow run deploy-gcp.yml -R $Repo"

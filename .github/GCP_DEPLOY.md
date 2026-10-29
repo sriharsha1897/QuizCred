@@ -1,81 +1,55 @@
 # GitHub Actions → GCP (Cloud Run)
 
-Workflow: [`.github/workflows/deploy-gcp.yml`](workflows/deploy-gcp.yml) runs [`scripts/deploy-gcp.sh`](../scripts/deploy-gcp.sh) on **push to `main`** (paths above) or **manual** run.
+Workflow: [`.github/workflows/deploy-gcp.yml`](workflows/deploy-gcp.yml) runs [`scripts/deploy-gcp.sh`](../scripts/deploy-gcp.sh) on **push to `main`** (matching paths) or **manual** run.
+
+Authentication uses **Workload Identity Federation** (no long-lived JSON keys). Many orgs block `iam.disableServiceAccountKeyCreation`.
+
+## One-command setup (Windows)
+
+After `gh auth login` and `gcloud auth login`:
+
+```powershell
+$env:GCP_PROJECT_ID = "quizcred-513114"
+$env:DB_PASSWORD = "YourAlphanumericPassword123"
+.\scripts\setup-gcp-cicd.ps1
+```
+
+This creates the deploy service account, WIF pool/provider, IAM bindings, and GitHub secrets.
+
+## GitHub repository secrets (manual reference)
+
+| Secret | Example |
+|--------|---------|
+| `GCP_PROJECT_ID` | `quizcred-513114` |
+| `GCP_SERVICE_ACCOUNT` | `github-actions-deploy@quizcred-513114.iam.gserviceaccount.com` |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | `projects/425855099596/locations/global/workloadIdentityPools/github-pool/providers/github-provider` |
+| `DB_PASSWORD` | Alphanumeric only |
+| `JWT_SECRET` | Long random string |
+| `GCP_REGION` | Optional, default `us-central1` |
+| `SQL_INSTANCE` | Optional, default `quiz-pg` |
+
+Set under **Settings → Secrets and variables → Actions**, or `gh secret set NAME --body VALUE -R sriharsha1897/QuizCred`.
+
+## Run deploy
+
+```bash
+gh workflow run deploy-gcp.yml -R sriharsha1897/QuizCred
+```
+
+Or **Actions → Deploy to GCP → Run workflow**.
+
+First run may take **30–60+ minutes** (Cloud SQL + Cloud Build). Job **Summary** lists Web / API / Docs URLs.
 
 ## Prerequisites
 
-1. GCP project **billing enabled** and linked (e.g. `quizcred-513114`).
-2. APIs will be enabled by the script on first run.
-3. `DB_PASSWORD` must be **letters and numbers only** (Cloud SQL).
-
-## 1. Create a deploy service account
-
-In [Cloud Shell](https://console.cloud.google.com/cloudshell) (replace `quizcred-513114` with your project ID):
-
-```bash
-export PROJECT_ID="quizcred-513114"
-gcloud config set project "$PROJECT_ID"
-
-gcloud iam service-accounts create github-actions-deploy \
-  --display-name="GitHub Actions deploy"
-
-SA="github-actions-deploy@${PROJECT_ID}.iam.gserviceaccount.com"
-
-for ROLE in \
-  roles/run.admin \
-  roles/cloudbuild.builds.editor \
-  roles/artifactregistry.admin \
-  roles/cloudsql.admin \
-  roles/serviceusage.serviceUsageAdmin \
-  roles/resourcemanager.projectIamAdmin
-do
-  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-    --member="serviceAccount:${SA}" \
-    --role="$ROLE" \
-    --quiet
-done
-
-gcloud iam service-accounts keys create github-actions-key.json \
-  --iam-account="$SA"
-```
-
-Download `github-actions-key.json` from Cloud Shell (**User menu → Download file**), then **delete it from Cloud Shell** after adding to GitHub.
-
-## 2. Add GitHub repository secrets
-
-Repo: **Settings → Secrets and variables → Actions → New repository secret**
-
-| Secret | Required | Example / notes |
-|--------|----------|-----------------|
-| `GCP_PROJECT_ID` | Yes | `quizcred-513114` |
-| `GCP_SA_KEY` | Yes | Full JSON contents of `github-actions-key.json` |
-| `DB_PASSWORD` | Yes | Alphanumeric Cloud SQL postgres password |
-| `JWT_SECRET` | Yes | Long random string (`openssl rand -hex 32`) |
-| `GCP_REGION` | No | Default `us-central1` |
-| `SQL_INSTANCE` | No | Default `quiz-pg` |
-
-Never commit these values to the repo.
-
-## 3. Run the workflow
-
-- **Actions → Deploy to GCP → Run workflow**, or push to `main` after the workflow file is merged.
-- First run can take **30–60+ minutes** (Cloud SQL create + builds).
-- Open the job **Summary** for Web / API / Docs URLs.
-
-## 4. After deploy
-
-- Test web URL with `user@quiz.com` / `User123!` (seed on boot).
-- Update README deployment URLs if you document live links.
+- Project **billing enabled** and payment account healthy.
+- `DB_PASSWORD` must stay stable after Cloud SQL is created (or update Cloud SQL user password to match).
 
 ## Troubleshooting
 
 | Issue | Check |
 |-------|--------|
-| Auth failed | `GCP_SA_KEY` is valid JSON; SA exists in the same project as `GCP_PROJECT_ID` |
-| Billing disabled | Link billing to the project in console |
-| SQL / build permission | SA has roles listed in step 1 |
-| Payment account pending | Billing must be active before CI can create SQL or Cloud Build |
-
-## Security note
-
-Service account keys in GitHub secrets are simple for assignments; production teams often prefer [Workload Identity Federation](https://github.com/google-github-actions/auth#setting-up-workload-identity-federation) instead of long-lived JSON keys.
+| `billing disabled` | Link billing to the project |
+| WIF auth failed | Secrets match project number; repo is exactly `sriharsha1897/QuizCred` |
+| SQL / build errors | Cloud Build logs in GCP console |
+| Payment pending | ₹ prepayment must post before APIs run |
