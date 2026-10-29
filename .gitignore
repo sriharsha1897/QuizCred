@@ -1,0 +1,15 @@
+node_modules
+dist
+.next
+.env
+.env.local
+coverage
+*.log
+*.err
+*.tsbuildinfo
+cursor-ts-diags.txt
+backend/.test-db-url
+backend/.test-pg
+backend/.pgdata
+backend/dist
+frontend/.next

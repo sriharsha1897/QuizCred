@@ -1,0 +1,149 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+
+  @@map("role")
+}
+
+enum TransactionType {
+  WELCOME_BONUS
+  STAKE
+  QUIZ_REWARD
+  PURCHASE
+
+  @@map("transaction_type")
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SETTLED
+
+  @@map("attempt_status")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  firstName    String?  @map("first_name")
+  lastName     String?  @map("last_name")
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  creditAccount CreditAccount?
+  transactions  CreditTransaction[]
+  quizzes       Quiz[]                @relation("QuizAuthor")
+  attempts      Attempt[]
+
+  @@map("users")
+}
+
+model CreditAccount {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  balance   Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions CreditTransaction[]
+
+  @@map("credit_accounts")
+}
+
+model CreditTransaction {
+  id             String          @id @default(uuid()) @db.Uuid
+  accountId      String          @map("account_id") @db.Uuid
+  userId         String          @map("user_id") @db.Uuid
+  type           TransactionType
+  amount         Int
+  balanceAfter   Int             @map("balance_after")
+  idempotencyKey String          @unique @map("idempotency_key")
+  referenceType  String?         @map("reference_type")
+  referenceId    String?         @map("reference_id")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  account CreditAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("credit_transactions")
+}
+
+model Quiz {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  description String
+  stake       Int
+  reward      Int
+  passMark    Int      @map("pass_mark")
+  published   Boolean  @default(false)
+  createdById String   @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  createdBy User       @relation("QuizAuthor", fields: [createdById], references: [id])
+  questions Question[]
+  attempts  Attempt[]
+
+  @@map("quizzes")
+}
+
+model Question {
+  id           String @id @default(uuid()) @db.Uuid
+  quizId       String @map("quiz_id") @db.Uuid
+  prompt       String
+  options      Json
+  correctIndex Int    @map("correct_index")
+  order        Int
+
+  quiz    Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers AttemptAnswer[]
+
+  @@unique([quizId, order])
+  @@map("questions")
+}
+
+model Attempt {
+  id           String        @id @default(uuid()) @db.Uuid
+  userId       String        @map("user_id") @db.Uuid
+  quizId       String        @map("quiz_id") @db.Uuid
+  status       AttemptStatus @default(IN_PROGRESS)
+  stakeAmount  Int           @map("stake_amount")
+  score        Int?
+  passed       Boolean?
+  rewardAmount Int?          @map("reward_amount")
+  startedAt    DateTime      @default(now()) @map("started_at")
+  submittedAt  DateTime?     @map("submitted_at")
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz    Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers AttemptAnswer[]
+
+  @@index([userId, startedAt])
+  @@map("attempts")
+}
+
+model AttemptAnswer {
+  id            String @id @default(uuid()) @db.Uuid
+  attemptId     String @map("attempt_id") @db.Uuid
+  questionId    String @map("question_id") @db.Uuid
+  selectedIndex Int    @map("selected_index")
+
+  attempt  Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@map("attempt_answers")
+}
