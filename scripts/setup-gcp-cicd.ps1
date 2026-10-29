@@ -56,7 +56,8 @@ $roles = @(
   "roles/serviceusage.serviceUsageConsumer",
   "roles/resourcemanager.projectIamAdmin",
   "roles/storage.admin",
-  "roles/logging.logWriter"
+  "roles/logging.logWriter",
+  "roles/iam.serviceAccountUser"
 )
 foreach ($role in $roles) {
   & $Gcloud projects add-iam-policy-binding $ProjectId `
@@ -92,6 +93,13 @@ $member = "principalSet://iam.googleapis.com/projects/$ProjectNumber/locations/g
   --project=$ProjectId `
   --role="roles/iam.workloadIdentityUser" `
   --member=$member `
+  --quiet | Out-Null
+
+$RuntimeSa = "${ProjectNumber}-compute@developer.gserviceaccount.com"
+& $Gcloud iam service-accounts add-iam-policy-binding $RuntimeSa `
+  --project=$ProjectId `
+  --member="serviceAccount:$SaEmail" `
+  --role="roles/iam.serviceAccountUser" `
   --quiet | Out-Null
 
 $ProviderResource = "projects/$ProjectNumber/locations/global/workloadIdentityPools/$PoolId/providers/$ProviderId"
