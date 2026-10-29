@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { AuthGate } from "@/components/auth-gate";
+import { PageLoader } from "@/components/loading-spinner";
 import { api, apiErrorMessage } from "@/lib/api";
 import { ManagedQuestion, QuizSummary } from "@/lib/types";
 
@@ -109,8 +110,7 @@ function Editor() {
     }
   }
 
-  if (!quiz && !error)
-    return <p className="text-sm text-moss">Loading editor…</p>;
+  if (!quiz && !error) return <PageLoader />;
   if (!quiz) return <p className="alert-error">{error}</p>;
 
   return (

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AuthGate } from '@/components/auth-gate';
+import { PageLoader } from '@/components/loading-spinner';
 import { CreditAmount } from '@/components/credit-display';
 import { api, apiErrorMessage } from '@/lib/api';
 import { AttemptView } from '@/lib/types';
@@ -27,7 +28,7 @@ function Result() {
       .catch((caught) => setError(apiErrorMessage(caught, 'Could not load this result')));
   }, [params.id]);
 
-  if (!attempt && !error) return <p className="text-sm text-moss">Loading result…</p>;
+  if (!attempt && !error) return <PageLoader />;
   if (!attempt) return <p className="alert-error">{error}</p>;
   if (attempt.status !== 'SETTLED') {
     return (

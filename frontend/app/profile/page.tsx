@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { AuthGate } from '@/components/auth-gate';
+import { PageLoader } from '@/components/loading-spinner';
 import { PasswordField } from '@/components/password-field';
 import { api, apiErrorMessage } from '@/lib/api';
 import { readUser, updateStoredUser } from '@/lib/session';
@@ -103,7 +104,7 @@ function Profile() {
   }
 
   if (!profile && !profileError) {
-    return <p className="text-sm text-moss">Loading profile…</p>;
+    return <PageLoader />;
   }
 
   return (

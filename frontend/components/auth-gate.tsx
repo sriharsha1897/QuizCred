@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { readUser } from '@/lib/session';
+import { PageLoader } from './loading-spinner';
 import { Shell } from './shell';
 
 export function AuthGate({
@@ -35,6 +36,6 @@ export function AuthGate({
     setReady(true);
   }, [admin, player, router]);
 
-  if (!ready) return <p className="p-8 text-sm text-moss">Loading…</p>;
+  if (!ready) return <PageLoader padded />;
   return <Shell>{children}</Shell>;
 }

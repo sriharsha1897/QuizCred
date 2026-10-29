@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { PageLoader } from '@/components/loading-spinner';
 import { readUser } from '@/lib/session';
 
 export default function HomePage() {
@@ -14,5 +15,5 @@ export default function HomePage() {
     }
     router.replace(user.role === 'ADMIN' ? '/admin/quizzes' : '/quizzes');
   }, [router]);
-  return <p className="p-8 text-sm text-moss">Loading…</p>;
+  return <PageLoader padded />;
 }

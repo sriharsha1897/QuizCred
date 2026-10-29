@@ -9,7 +9,7 @@ export async function createApp() {
   const app = await NestFactory.create(AppModule, { logger: ['error', 'warn', 'log'] });
   const config = app.get(ConfigService);
   const origin = (config.get<string>('CORS_ORIGIN') ?? 'http://localhost:3000')
-    .split(',')
+    .split(/[,;]/)
     .map((value) => value.trim())
     .filter(Boolean);
   app.enableCors({ origin, credentials: true });

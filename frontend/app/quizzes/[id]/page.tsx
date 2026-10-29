@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AuthGate } from '@/components/auth-gate';
+import { PageLoader } from '@/components/loading-spinner';
 import { CreditAmount } from '@/components/credit-display';
 import { api, apiErrorMessage } from '@/lib/api';
 import { AttemptView, QuizSummary, QuestionView } from '@/lib/types';
@@ -43,7 +44,7 @@ function QuizDetail() {
     }
   }
 
-  if (!quiz && !error) return <p className="text-sm text-moss">Loading quiz…</p>;
+  if (!quiz && !error) return <PageLoader />;
 
   return (
     <div className="space-y-6">

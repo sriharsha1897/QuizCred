@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
 import { AuthGate } from '@/components/auth-gate';
+import { PageLoader } from '@/components/loading-spinner';
 import { CreditAmount } from '@/components/credit-display';
 import { api, apiErrorMessage } from '@/lib/api';
 import { AttemptView } from '@/lib/types';
@@ -57,7 +58,7 @@ function AttemptForm() {
     }
   }
 
-  if (!attempt && !error) return <p className="text-sm text-moss">Loading attempt…</p>;
+  if (!attempt && !error) return <PageLoader />;
   if (!attempt) return <p className="alert-error">{error}</p>;
 
   const ready = attempt.questions.every((question) => answers[question.id] !== undefined);

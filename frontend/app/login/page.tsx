@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { AuthCard } from '@/components/auth-card';
+import { PageLoader } from '@/components/loading-spinner';
 import { api, apiErrorMessage } from '@/lib/api';
 import { normalizeEmail, validateEmail } from '@/lib/email';
 import { saveSession } from '@/lib/session';
@@ -11,7 +12,7 @@ import { AuthResponse } from '@/lib/types';
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-moss">Loading sign in…</p>}>
+    <Suspense fallback={<PageLoader padded />}>
       <LoginForm />
     </Suspense>
   );
