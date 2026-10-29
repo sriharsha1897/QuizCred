@@ -1,0 +1,62 @@
+# Build with Cloud Build, deploy quiz-api and quiz-web to Cloud Run (same flow as scripts/deploy-gcp.sh).
+# Requires GitHub repository secrets — see .github/GCP_DEPLOY.md
+
+name: Deploy to GCP
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'scripts/deploy-gcp.sh'
+      - '.github/workflows/deploy-gcp.yml'
+
+concurrency:
+  group: deploy-gcp-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Run deploy script
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          GCP_REGION: ${{ secrets.GCP_REGION }}
+          SQL_INSTANCE: ${{ secrets.SQL_INSTANCE }}
+        run: bash scripts/deploy-gcp.sh
+
+      - name: Print service URLs
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ secrets.GCP_REGION }}
+        run: |
+          REGION="${GCP_REGION:-us-central1}"
+          API_URL="$(gcloud run services describe quiz-api --region "$REGION" --format='value(status.url)')"
+          WEB_URL="$(gcloud run services describe quiz-web --region "$REGION" --format='value(status.url)')"
+          echo "## Deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Web:** $WEB_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **API:** $API_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Docs:** $API_URL/docs" >> "$GITHUB_STEP_SUMMARY"

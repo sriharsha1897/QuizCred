@@ -230,6 +230,8 @@ bash scripts/deploy-gcp.sh
 
 The script enables Cloud Run, Cloud SQL Admin, Artifact Registry, and Cloud Build. It creates a Postgres 16 instance `quiz-pg`, builds the API and web images, deploys `quiz-api` and `quiz-web`, then sets the API `CORS_ORIGIN` to the web URL.
 
+**GitHub Actions:** push to `main` or run the **Deploy to GCP** workflow manually. One-time setup (service account + repository secrets) is in [`.github/GCP_DEPLOY.md`](.github/GCP_DEPLOY.md).
+
 Record the printed URLs here after a real deploy:
 
 - API: not deployed yet
