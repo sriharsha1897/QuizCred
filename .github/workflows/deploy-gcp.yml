@@ -48,6 +48,7 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           GCP_REGION: ${{ secrets.GCP_REGION }}
           SQL_INSTANCE: ${{ secrets.SQL_INSTANCE }}
+          USE_DOCKER_BUILD: "1"
         run: bash scripts/deploy-gcp.sh
 
       - name: Print service URLs

@@ -53,9 +53,19 @@ gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
   --role="roles/cloudsql.client" \
   --quiet >/dev/null
 
-gcloud builds submit "$ROOT/backend" \
-  --config "$ROOT/backend/cloudbuild.yaml" \
-  --substitutions "_IMAGE=${API_IMAGE}"
+build_api_image() {
+  if [ "${USE_DOCKER_BUILD:-}" = "1" ]; then
+    gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+    docker build -t "$API_IMAGE" "$ROOT/backend"
+    docker push "$API_IMAGE"
+  else
+    gcloud builds submit "$ROOT/backend" \
+      --config "$ROOT/backend/cloudbuild.yaml" \
+      --substitutions "_IMAGE=${API_IMAGE}"
+  fi
+}
+
+build_api_image
 
 gcloud run deploy quiz-api \
   --image "$API_IMAGE" \
@@ -69,9 +79,15 @@ gcloud run deploy quiz-api \
 
 API_URL="$(gcloud run services describe quiz-api --region "$REGION" --format='value(status.url)')"
 
-gcloud builds submit "$ROOT/frontend" \
-  --config "$ROOT/frontend/cloudbuild.yaml" \
-  --substitutions "_IMAGE=${WEB_IMAGE},_API_URL=${API_URL}"
+if [ "${USE_DOCKER_BUILD:-}" = "1" ]; then
+  gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+  docker build --build-arg "NEXT_PUBLIC_API_URL=${API_URL}" -t "$WEB_IMAGE" "$ROOT/frontend"
+  docker push "$WEB_IMAGE"
+else
+  gcloud builds submit "$ROOT/frontend" \
+    --config "$ROOT/frontend/cloudbuild.yaml" \
+    --substitutions "_IMAGE=${WEB_IMAGE},_API_URL=${API_URL}"
+fi
 
 gcloud run deploy quiz-web \
   --image "$WEB_IMAGE" \

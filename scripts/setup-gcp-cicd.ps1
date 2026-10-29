@@ -53,7 +53,10 @@ $roles = @(
   "roles/artifactregistry.admin",
   "roles/cloudsql.admin",
   "roles/serviceusage.serviceUsageAdmin",
-  "roles/resourcemanager.projectIamAdmin"
+  "roles/serviceusage.serviceUsageConsumer",
+  "roles/resourcemanager.projectIamAdmin",
+  "roles/storage.admin",
+  "roles/logging.logWriter"
 )
 foreach ($role in $roles) {
   & $Gcloud projects add-iam-policy-binding $ProjectId `
