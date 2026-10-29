@@ -96,15 +96,22 @@ gcloud run deploy quiz-web \
   --port 3000 \
   --memory 512Mi
 
-WEB_URL="$(gcloud run services describe quiz-web --region "$REGION" --format='value(status.url)')"
+WEB_URL="$(gcloud run services describe quiz-web --region "$REGION" --format='value(status.url)' | tr -d '\r\n')"
 PROJECT_NUMBER="$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')"
 WEB_ALT_URL="https://quiz-web-${PROJECT_NUMBER}.${REGION}.run.app"
-# Semicolon-separated (commas break gcloud --update-env-vars; colons break ^:^ escaping).
-CORS_ORIGINS="${WEB_URL};${WEB_ALT_URL}"
-
+# --update-env-vars cannot put commas/semicolons in values; YAML file sets the full env block safely.
+API_ENV_FILE="$(mktemp)"
+trap 'rm -f "$API_ENV_FILE"' EXIT
+{
+  printf 'JWT_SECRET: "%s"\n' "$JWT_SECRET"
+  printf 'JWT_EXPIRES_IN: "1d"\n'
+  printf 'SEED_ON_BOOT: "true"\n'
+  printf 'CORS_ORIGIN: "%s,%s"\n' "$WEB_URL" "$WEB_ALT_URL"
+  printf 'DATABASE_URL: "postgresql://postgres:%s@localhost/quiz?host=/cloudsql/%s"\n' "$DB_PASSWORD" "$CONN"
+} >"$API_ENV_FILE"
 gcloud run services update quiz-api \
   --region "$REGION" \
-  --update-env-vars "CORS_ORIGIN=${CORS_ORIGINS}"
+  --env-vars-file="$API_ENV_FILE"
 
 echo "API:  ${API_URL}"
 echo "Web:  ${WEB_URL}"
