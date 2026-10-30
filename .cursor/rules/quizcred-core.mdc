@@ -1,0 +1,13 @@
+---
+description: QuizCred core invariants (credits, auth, API envelope)
+alwaysApply: true
+---
+
+# QuizCred core
+
+- Monorepo: `backend/` NestJS + Prisma, `frontend/` Next.js App Router. See `AGENTS.md`.
+- Credits: ledger + transactional balance in `backend/src/credits/ledger.ts`. No client-side scoring or balance writes.
+- API success: `{ message, data }`; errors: `{ statusCode, code, message }`. Frontend uses `frontend/lib/api.ts`.
+- JWT Bearer on protected routes; admin via `@Roles(Role.ADMIN)`. Web session in `frontend/lib/session.ts`.
+- Before claiming behavior, check `backend/test/app.e2e-spec.ts` or README “How balances stay consistent”.
+- After learning something non-obvious, follow `.cursor/CONTEXT-HARNESS.md` (LEARNINGS + rules).

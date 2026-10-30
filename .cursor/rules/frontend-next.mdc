@@ -1,0 +1,13 @@
+---
+description: Next.js App Router and API client conventions for QuizCred web
+globs: frontend/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend patterns
+
+- Routes in `frontend/app/`; shared UI in `frontend/components/`.
+- All API calls via `api()` from `@/lib/api`; errors via `apiErrorMessage()`.
+- Protect pages with `@frontend/components/auth-gate.tsx` (`admin` / `player` flags).
+- Display scores and balances from API responses only—never derive pass/fail or ledger totals locally.
+- Env: `NEXT_PUBLIC_API_URL` for API origin; use `cache: 'no-store'` (already set in `api()`).

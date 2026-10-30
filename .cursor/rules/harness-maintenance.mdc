@@ -1,0 +1,17 @@
+---
+description: When and how to update the AI context harness in this repo
+alwaysApply: true
+---
+
+# Context harness maintenance
+
+Read `.cursor/CONTEXT-HARNESS.md` for the full loop.
+
+When the user corrects you, or you discover repo-specific behavior not in docs:
+
+1. Add one bullet to `.cursor/context/LEARNINGS.md` (date + concise fact).
+2. If it will recur, update `AGENTS.md` or the smallest matching `.cursor/rules/*.mdc` (under ~50 lines).
+3. Prefer `@path/to/file` references over pasted code.
+4. Do not duplicate README credit/deploy sections—link to `README.md` sections instead.
+
+Skip harness edits for typos, one-line fixes, or generic coding advice.

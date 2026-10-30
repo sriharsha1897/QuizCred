@@ -1,0 +1,14 @@
+---
+description: NestJS module and credit-settlement patterns for QuizCred API
+globs: backend/**/*.ts
+alwaysApply: false
+---
+
+# Backend patterns
+
+- Feature modules under `backend/src/<name>/` with controller + service + DTOs.
+- Use `@Public()` only for register/login; `@Roles(Role.ADMIN)` for manage routes.
+- Return handler data directly; wrapping is done by `@backend/src/common/interceptors/api-response.interceptor.ts`.
+- Credit changes: only through `applyLedger` in the same transaction as balance updates.
+- Attempt lifecycle: stake at start, settle at submit with row lock + status check—see `@backend/src/attempts/attempts.service.ts`.
+- Schema changes: edit `prisma/schema.prisma`, migrate, update seed if needed, extend e2e in `@backend/test/app.e2e-spec.ts`.

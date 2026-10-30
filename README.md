@@ -11,6 +11,7 @@ Players register, receive 500 credits, stake credits to enter a published quiz, 
 - Docs: Swagger UI at `/docs`, OpenAPI JSON at `/docs-json`
 - Local full stack: Docker Compose
 - Production target: GCP Cloud Run and Cloud SQL, then DigitalAPI in front of the API
+- AI assistants: `AGENTS.md` and `.cursor/CONTEXT-HARNESS.md` (rules, skills, learnings log)
 
 ## Layout
 
