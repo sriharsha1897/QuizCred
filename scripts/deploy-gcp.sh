@@ -10,6 +10,7 @@
 # Optional:
 #   GCP_REGION       default us-central1
 #   SQL_INSTANCE     default quiz-pg
+#   PUBLIC_API_URL   browser-facing API (DigitalAPI gateway); baked into the web image
 
 set -euo pipefail
 
@@ -19,6 +20,8 @@ set -euo pipefail
 
 REGION="${GCP_REGION:-us-central1}"
 SQL_INSTANCE="${SQL_INSTANCE:-quiz-pg}"
+PUBLIC_API_URL="${PUBLIC_API_URL:-https://personal-test.ft-gateway.digitalapicraft.com}"
+PUBLIC_API_URL="${PUBLIC_API_URL%/}"
 REPO="quiz"
 API_IMAGE="${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${REPO}/api:latest"
 WEB_IMAGE="${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${REPO}/web:latest"
@@ -81,12 +84,12 @@ API_URL="$(gcloud run services describe quiz-api --region "$REGION" --format='va
 
 if [ "${USE_DOCKER_BUILD:-}" = "1" ]; then
   gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
-  docker build --build-arg "NEXT_PUBLIC_API_URL=${API_URL}" -t "$WEB_IMAGE" "$ROOT/frontend"
+  docker build --build-arg "NEXT_PUBLIC_API_URL=${PUBLIC_API_URL}" -t "$WEB_IMAGE" "$ROOT/frontend"
   docker push "$WEB_IMAGE"
 else
   gcloud builds submit "$ROOT/frontend" \
     --config "$ROOT/frontend/cloudbuild.yaml" \
-    --substitutions "_IMAGE=${WEB_IMAGE},_API_URL=${API_URL}"
+    --substitutions "_IMAGE=${WEB_IMAGE},_API_URL=${PUBLIC_API_URL}"
 fi
 
 gcloud run deploy quiz-web \
@@ -113,7 +116,8 @@ gcloud run services update quiz-api \
   --region "$REGION" \
   --env-vars-file="$API_ENV_FILE"
 
-echo "API:  ${API_URL}"
-echo "Web:  ${WEB_URL}"
-echo "Docs: ${API_URL}/docs"
+echo "API (Cloud Run upstream): ${API_URL}"
+echo "API (public / web client):  ${PUBLIC_API_URL}"
+echo "Web:                        ${WEB_URL}"
+echo "Docs (upstream):            ${API_URL}/docs"
 echo "Write these URLs into the README deployment section."

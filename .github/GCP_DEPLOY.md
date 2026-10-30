@@ -28,6 +28,8 @@ This creates the deploy service account, WIF pool/provider, IAM bindings, and Gi
 | `GCP_REGION` | Optional, default `us-central1` |
 | `SQL_INSTANCE` | Optional, default `quiz-pg` |
 
+The deployed **web** app calls the public DigitalAPI gateway (`https://personal-test.ft-gateway.digitalapicraft.com`) via `NEXT_PUBLIC_API_URL`, not the raw Cloud Run API URL. Override at deploy time with env `PUBLIC_API_URL` (see `scripts/deploy-gcp.sh`).
+
 Set under **Settings → Secrets and variables → Actions**, or `gh secret set NAME --body VALUE -R sriharsha1897/QuizCred`.
 
 ## Run deploy

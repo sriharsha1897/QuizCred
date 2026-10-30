@@ -49,16 +49,20 @@ jobs:
           GCP_REGION: ${{ secrets.GCP_REGION }}
           SQL_INSTANCE: ${{ secrets.SQL_INSTANCE }}
           USE_DOCKER_BUILD: "1"
+          PUBLIC_API_URL: https://personal-test.ft-gateway.digitalapicraft.com
         run: bash scripts/deploy-gcp.sh
 
       - name: Print service URLs
         env:
           GCP_REGION: ${{ secrets.GCP_REGION }}
+          PUBLIC_API_URL: https://personal-test.ft-gateway.digitalapicraft.com
         run: |
           REGION="${GCP_REGION:-us-central1}"
           API_URL="$(gcloud run services describe quiz-api --region "$REGION" --format='value(status.url)')"
           WEB_URL="$(gcloud run services describe quiz-web --region "$REGION" --format='value(status.url)')"
           echo "## Deployed" >> "$GITHUB_STEP_SUMMARY"
+          PUBLIC_API_URL="${PUBLIC_API_URL:-https://personal-test.ft-gateway.digitalapicraft.com}"
           echo "- **Web:** $WEB_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **API:** $API_URL" >> "$GITHUB_STEP_SUMMARY"
-          echo "- **Docs:** $API_URL/docs" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Public API (browser):** $PUBLIC_API_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **API upstream (Cloud Run):** $API_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Docs (upstream):** $API_URL/docs" >> "$GITHUB_STEP_SUMMARY"
