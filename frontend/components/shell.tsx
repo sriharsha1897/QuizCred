@@ -2,15 +2,24 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { CreditAmount } from '@/components/credit-display';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { UserMenu } from '@/components/user-menu';
 import { APP_NAME } from '@/lib/brand';
 import { api } from '@/lib/api';
 import { clearSession, readUser } from '@/lib/session';
 import { SessionUser } from '@/lib/types';
 
-export function Shell({ children }: { children: React.ReactNode }) {
+function NavPill({ href, active, children }: { href: string; active: boolean; children: ReactNode }) {
+  return (
+    <Link href={href} className={`nav-pill ${active ? 'nav-pill-active' : ''}`}>
+      {children}
+    </Link>
+  );
+}
+
+export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -44,51 +53,60 @@ export function Shell({ children }: { children: React.ReactNode }) {
     router.replace('/login');
   }
 
-  function navClass(active: boolean) {
-    return active ? 'nav-link text-ink' : 'nav-link';
-  }
-
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-10 border-b border-line/90 bg-card/85 shadow-header backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-3.5">
-          <Link href={homeHref} className="font-serif text-2xl tracking-tight text-ink">
-            {APP_NAME}
-          </Link>
-          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+      <header className="sticky top-0 z-10 border-b border-line/90 bg-card/90 shadow-header backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link href={homeHref} className="group shrink-0">
+              <span className="font-serif text-2xl tracking-tight text-ink transition group-hover:text-teal">
+                {APP_NAME}
+              </span>
+            </Link>
             {isAdmin ? (
-              <>
-                <Link href="/admin/quizzes" className={navClass(pathname.startsWith('/admin'))}>
-                  Manage quizzes
-                </Link>
-                <Link href="/leaderboard" className={navClass(pathname === '/leaderboard')}>
-                  Leaderboard
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link href="/quizzes" className={navClass(pathname.startsWith('/quizzes'))}>
-                  Quizzes
-                </Link>
-                <Link href="/leaderboard" className={navClass(pathname === '/leaderboard')}>
-                  Leaderboard
-                </Link>
-                <Link href="/wallet" className={navClass(pathname === '/wallet')}>
-                  Wallet
-                </Link>
-                <span className="badge-credits inline-flex items-center gap-1.5">
+              <span className="rounded-full bg-teal-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-teal">
+                Admin
+              </span>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+            <nav className="nav-pills" aria-label="Main">
+              {isAdmin ? (
+                <>
+                  <NavPill href="/admin/quizzes" active={pathname.startsWith('/admin')}>
+                    Manage
+                  </NavPill>
+                  <NavPill href="/leaderboard" active={pathname === '/leaderboard'}>
+                    Leaderboard
+                  </NavPill>
+                </>
+              ) : (
+                <>
+                  <NavPill href="/quizzes" active={pathname.startsWith('/quizzes')}>
+                    Quizzes
+                  </NavPill>
+                  <NavPill href="/leaderboard" active={pathname === '/leaderboard'}>
+                    Leaderboard
+                  </NavPill>
+                  <NavPill href="/wallet" active={pathname === '/wallet'}>
+                    Wallet
+                  </NavPill>
+                </>
+              )}
+            </nav>
+
+            <div className="nav-actions">
+              {!isAdmin ? (
+                <span className="badge-credits inline-flex items-center gap-1.5 tabular-nums">
                   <CreditAmount value={balance} />
                 </span>
-              </>
-            )}
-            <Link href="/profile" className={navClass(pathname === '/profile')}>
-              Profile
-            </Link>
-            <ThemeToggle />
-            <button type="button" onClick={logout} className="nav-link">
-              Log out
-            </button>
-          </nav>
+              ) : null}
+              <span className="nav-divider" aria-hidden />
+              <ThemeToggle />
+              {user ? <UserMenu user={user} onLogout={logout} /> : null}
+            </div>
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-5 py-8">{children}</main>
